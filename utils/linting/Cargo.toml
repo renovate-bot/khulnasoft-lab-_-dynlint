@@ -1,0 +1,43 @@
+[package]
+name = "dynlint_linting"
+version = "2.4.3"
+authors = ["Samuel E. Moelius III <sam@moeli.us>"]
+description = "Utilities for writing Dynlint libraries"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/khulnasoft-lab/dynlint"
+
+[dependencies]
+cargo_metadata = "0.18"
+paste = "1.0"
+rustversion = "1.0"
+serde = "1.0"
+thiserror = "1.0"
+toml = "0.8"
+
+dynlint_internal = { version = "=2.4.3", path = "../../internal" }
+
+[build-dependencies]
+toml = "0.8"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+
+[features]
+constituent = []
+
+[package.metadata.docs.rs]
+rustc-args = ["--cfg", "docsrs"]
+
+[package.metadata.rust-analyzer]
+rustc_private = true
+
+[workspace]
+
+[workspace.metadata.dynlint]
+libraries = [
+    { path = "../../examples/general" },
+    { path = "../../examples/supplementary" },
+    { path = "../../examples/testing/clippy" },
+    { path = "../../examples/restriction/*" },
+]

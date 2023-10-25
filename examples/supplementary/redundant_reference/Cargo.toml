@@ -1,0 +1,26 @@
+[package]
+name = "redundant_reference"
+version = "2.4.3"
+authors = ["Samuel E. Moelius III <sam@moeli.us>"]
+description = "A lint to check for reference fields used only to read one copyable subfield"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+clippy_utils = { workspace = true }
+if_chain = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+dynlint_linting = { path = "../../../utils/linting" }
+
+[dev-dependencies]
+dynlint_testing = { path = "../../../utils/testing" }
+
+[features]
+rlib = ["dynlint_linting/constituent"]
+
+[package.metadata.rust-analyzer]
+rustc_private = true

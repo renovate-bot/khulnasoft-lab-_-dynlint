@@ -1,0 +1,15 @@
+[package]
+name = "examples"
+version = "2.4.3"
+description = "A dummy package for testing the example Dynlint libraries"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dev-dependencies]
+cargo-util = "0.2"
+cargo_metadata = "0.18"
+toml_edit = "0.20"
+walkdir = "2.4"
+
+dynlint_internal = { version = "=2.4.3", path = "../internal", features = ["clippy_utils", "examples"] }

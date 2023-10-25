@@ -1,0 +1,27 @@
+[package]
+name = "straggler"
+version = "2.4.3"
+authors = ["Samuel E. Moelius III <sam@moeli.us>"]
+description = "A lint that uses an old toolchain for testing purposes"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# smoelius: `straggler` is intentionally held back for testing purposes.
+clippy_utils = { git = "https://github.com/rust-lang/rust-clippy", rev = "acdffd791b31d96cdeb15368132e8ca91f2089af" }
+
+dynlint_linting = { path = "../../../utils/linting" }
+
+[dev-dependencies]
+dynlint_testing = { path = "../../../utils/testing" }
+
+[package.metadata.rust-analyzer]
+rustc_private = true
+
+[workspace]
+
+[workspace.metadata.dynlint]
+libraries = []

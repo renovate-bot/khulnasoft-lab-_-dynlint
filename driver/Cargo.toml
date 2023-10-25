@@ -1,0 +1,28 @@
+[package]
+name = "dynlint_driver"
+version = "2.4.3"
+authors = ["Samuel E. Moelius III <sam@moeli.us>"]
+description = "Dynlint driver library"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/khulnasoft-lab/dynlint"
+
+[dependencies]
+anyhow = "1.0"
+libc = "0.2"
+libloading = "0.8"
+log = "0.4"
+rustversion = "1.0"
+serde_json = "1.0"
+
+dynlint_internal = { version = "=2.4.3", path = "../internal", features = ["rustup"] }
+
+[workspace]
+
+[workspace.metadata.dynlint]
+libraries = [
+    { path = "../examples/general" },
+    { path = "../examples/supplementary" },
+    { path = "../examples/testing/clippy" },
+    { path = "../examples/restriction/*" },
+]

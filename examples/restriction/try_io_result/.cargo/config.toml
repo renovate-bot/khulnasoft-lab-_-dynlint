@@ -1,0 +1,14 @@
+[build]
+target-dir = "../../../target/examples"
+
+[target.aarch64-apple-darwin]
+linker = "dynlint-link"
+
+[target.x86_64-apple-darwin]
+linker = "dynlint-link"
+
+[target.x86_64-unknown-linux-gnu]
+linker = "dynlint-link"
+
+[target.x86_64-pc-windows-msvc]
+linker = "dynlint-link"

@@ -1,0 +1,100 @@
+error: inconsistent qualification
+  --> $DIR/main.rs:6:20
+   |
+LL |     assert_eq!(Err(std::env::VarError::NotPresent), var("LD_PRELOAD"));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: items from `std::env` were imported here
+  --> $DIR/main.rs:3:1
+   |
+LL | use std::env::var;
+   | ^^^^^^^^^^^^^^^^^^
+   = note: `-D inconsistent-qualification` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(inconsistent_qualification)]`
+
+error: inconsistent qualification
+  --> $DIR/main.rs:13:24
+   |
+LL |         assert_eq!(Err(std::env::VarError::NotPresent), var("LD_PRELOAD"));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: items from `std::env` were imported here
+  --> $DIR/main.rs:10:5
+   |
+LL |     use std::env::var;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: inconsistent qualification
+  --> $DIR/main.rs:21:24
+   |
+LL |         assert_eq!(Err(env::VarError::NotPresent), var("LD_PRELOAD"));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: items from `std::env` were imported here
+  --> $DIR/main.rs:18:26
+   |
+LL |     use std::env::{self, var};
+   |                          ^^^
+
+error: inconsistent qualification
+  --> $DIR/main.rs:29:24
+   |
+LL |         assert_eq!(Err(std::env::VarError::NotPresent), var("LD_PRELOAD"));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: items from `std::env` were imported here
+  --> $DIR/main.rs:26:5
+   |
+LL |     use std::env::*;
+   |     ^^^^^^^^^^^^^^^^
+
+error: inconsistent qualification
+  --> $DIR/main.rs:39:24
+   |
+LL |         assert_eq!(Err(std::env::VarError::NotPresent), var("LD_PRELOAD"));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: items from `std::env` were imported here
+  --> $DIR/main.rs:37:9
+   |
+LL |         use std::env::var_os;
+   |         ^^^^^^^^^^^^^^^^^^^^^
+
+error: inconsistent qualification
+  --> $DIR/main.rs:80:9
+   |
+LL |         bar::Baz::new()
+   |         ^^^^^^^^
+   |
+note: `bar::Baz` was imported here
+  --> $DIR/main.rs:77:5
+   |
+LL |     use bar::Baz;
+   |     ^^^^^^^^^^^^^
+
+error: inconsistent qualification
+  --> $DIR/main.rs:98:15
+   |
+LL |         <_ as std::borrow::Borrow<T>>::borrow(x)
+   |               ^^^^^^^^^^^^^^^^^^^
+   |
+note: `std::borrow::Borrow` was imported here
+  --> $DIR/main.rs:95:5
+   |
+LL |     use std::borrow::Borrow;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: inconsistent qualification
+  --> $DIR/main.rs:107:9
+   |
+LL |         bar::baz::qux()
+   |         ^^^^^^^^
+   |
+note: `bar::baz` was imported here
+  --> $DIR/main.rs:104:5
+   |
+LL |     use bar::baz;
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

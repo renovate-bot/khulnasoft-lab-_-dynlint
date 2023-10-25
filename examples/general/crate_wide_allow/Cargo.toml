@@ -1,0 +1,33 @@
+[package]
+name = "crate_wide_allow"
+version = "2.4.3"
+authors = ["Samuel E. Moelius III <sam@moeli.us>"]
+description = "A lint to check for `#![allow(...)]` used at the crate level"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[example]]
+name = "ui"
+path = "ui/main.rs"
+
+[dependencies]
+clippy_utils = { workspace = true }
+if_chain = "1.0"
+
+dynlint_linting = { path = "../../../utils/linting" }
+
+[target.'cfg(not(no_dev_dependencies))'.dev-dependencies]
+assert_cmd = "2.0"
+cargo_metadata = "0.18"
+
+dynlint_internal = { path = "../../../internal" }
+dynlint_testing = { path = "../../../utils/testing" }
+
+[features]
+rlib = ["dynlint_linting/constituent"]
+
+[package.metadata.rust-analyzer]
+rustc_private = true

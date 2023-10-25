@@ -1,0 +1,219 @@
+name: CI
+
+on:
+  merge_group:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log github refs
+        run: |
+          {
+            echo '```'
+            echo 'github.sha: ${{ github.sha }}'
+            echo 'github.ref: ${{ github.ref }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.dynlint_drivers/
+            ~/.rustup/toolchains/
+          key: ${{ runner.os }}-drivers-${{ hashFiles('driver/**') }}
+
+      - name: Install dynlint-link
+        run: cargo install --path ./dynlint-link --force
+
+      - name: Actionlint
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+          "$HOME"/go/bin/actionlint
+
+      - name: Shellcheck
+        run: shellcheck --exclude=SC2002 scripts/*
+
+      - name: Install tools
+        run: |
+          # smoelius: Prettier is still needed for scripts/update_example_READMEs.sh.
+          npm install -g prettier
+          rm -f "$HOME"/.cargo/bin/cargo-fmt
+          rm -f "$HOME"/.cargo/bin/rustfmt
+          rustup install nightly
+          rustup component add rustfmt --toolchain nightly
+          cargo install cargo-license || true
+          cargo install cargo-rdme    || true
+          cargo install cargo-sort    || true
+
+      - name: Cargo sort
+        run: find . -name Cargo.toml -print0 | xargs -0 -n 1 dirname | xargs -n 1 cargo sort --check --grouped
+
+      - name: Format
+        run: ./scripts/format.sh && git diff --exit-code
+
+      - name: Format example READMEs
+        run: ./scripts/update_example_READMEs.sh && git diff --exit-code
+
+      - name: Format util READMEs
+        run: ./scripts/update_util_READMEs.sh && git diff --exit-code
+
+      - name: Check lockfiles
+        run: ./scripts/update_lockfiles.sh && git diff --exit-code
+
+      - name: Check licenses
+        run: ./scripts/check_licenses.sh
+
+      - name: Lint
+        run: ./scripts/lint.sh
+
+      # smoelius: Disable udeps. It doesn't appear it was working.
+      # - name: Udeps
+      #   run: |
+      #     rustup toolchain install nightly
+      #     cargo install cargo-udeps
+      #     cargo clean && cargo +nightly udeps --all-targets --no-default-features
+      #     cargo clean && cargo +nightly udeps --all-targets
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [ubuntu-latest, macos-latest, windows-latest]
+        package: [cargo-dynlint, examples, other]
+
+    runs-on: ${{ matrix.environment }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # smoelius: The `nightly_toolchain` test makes sense only if the nightly driver is cached.
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.dynlint_drivers/
+            ~/.rustup/toolchains/
+          key: ${{ runner.os }}-drivers-${{ hashFiles('driver/**') }}
+
+      - name: Rustup
+        run: rustup update
+
+      - name: Install dynlint-link
+        run: cargo install --path ./dynlint-link --force
+
+      # smoelius: This list will grow: https://github.com/khulnasoft-lab/dynlint/issues/636
+      - name: Install tools
+        run: |
+          npm install -g prettier
+          cargo install cargo-hack         || true
+          cargo install cargo-msrv         || true
+          cargo install cargo-supply-chain || true
+
+      - name: Free up space on Ubuntu
+        if: ${{ matrix.environment == 'ubuntu-latest' }}
+        run: |
+          # https://github.com/actions/runner-images/issues/2606#issuecomment-772683150
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/share/swift
+          # du -sh /usr/*/* 2>/dev/null | sort -h || true
+
+      - name: Test
+        run: |
+          if [[ '${{ matrix.environment }}' = 'windows-latest' ]]; then
+            export CARGO_INCREMENTAL=0
+          fi
+          if [[ '${{ matrix.package }}' != 'other' ]]; then
+            cargo test -p '${{ matrix.package }}' --all-features -- --nocapture
+          else
+            cargo test --workspace --exclude cargo-dynlint --exclude examples --all-features -- --nocapture
+
+            pushd driver
+            cargo test --all-features -- --nocapture
+            popd
+
+            pushd utils/linting
+            cargo test --all-features -- --nocapture
+            popd
+
+            # smoelius: The `cdylib` -> `lib` trick is due to @MinerSebas.
+            for X in examples/*/*; do
+              if [[ ! -d "$X" ]]; then
+                continue
+              fi
+              if [[ "$(basename "$X")" = '.cargo' || "$(basename "$X")" = 'src' ]]; then
+                  continue
+              fi
+              pushd "$X"
+              sed -i.bak 's/"cdylib"/"lib"/g' Cargo.toml
+              cargo test --doc
+              popd
+            done
+          fi
+
+  all-checks:
+    needs: [lint, test]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: true
+
+  coverage:
+    # smoelius: Disable coverage until the following issue is resolved:
+    # https://github.com/taiki-e/cargo-llvm-cov/issues/128
+    if: ${{ false }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dynlint-link
+        run: cargo install --path ./dynlint-link
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov
+
+      - name: Install llvm-tools-preview
+        run: rustup +nightly component add llvm-tools-preview
+
+      - name: Coverage
+        run: cargo llvm-cov --failure-mode all --lcov --output-path workspace.lcov
+        env:
+          RUSTUP_TOOLCHAIN: nightly
+
+      - name: Install lcov
+        run: sudo apt install lcov
+
+      - name: Generate html
+        run: genhtml --output-directory artifacts/html workspace.lcov
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Coverage
+          path: artifacts

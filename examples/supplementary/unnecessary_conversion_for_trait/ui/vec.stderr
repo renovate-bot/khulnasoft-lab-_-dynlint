@@ -1,0 +1,12 @@
+error: the inner argument implements the required traits
+  --> $DIR/vec.rs:2:33
+   |
+LL |     let _ = std::fs::write("x", vec![0]);
+   |                                 ^^^^^^^
+   |
+   = help: use the macro arguments directly
+   = note: `-D unnecessary-conversion-for-trait` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unnecessary_conversion_for_trait)]`
+
+error: aborting due to previous error
+

@@ -1,0 +1,41 @@
+#! /bin/cat
+
+# Experimental Dynlint tab-completion support for Bash
+#
+# This file works by "patching" cargo completions. Its effect is, e.g., that typing:
+# ```
+# cargo dynlint --lib <tab>
+# ```
+# suggests the libraries that Dynlint can find, i.e., those produced by `cargo dynlint --list`.
+#
+# To use this file:
+#
+# First, install cargo completions. Details for doing so are given by:
+# ```
+# rustup completions --help
+# ```
+# Second, copy this file to somewhere in your home directory, e.g.:
+# ```
+# cp completions/dynlint ~/.local/share/bash-completion/completions/dynlint
+# ```
+# Finally, in your `.bashrc` file, source this file **after** you source the cargo completions
+# script produced by rustup. For example, your `.bashrc` file might look something like this:
+# ```
+# source "$HOME/.local/share/bash-completion/completions/cargo"
+# source "$HOME/.local/share/bash-completion/completions/dynlint"
+# ```
+
+IFS='' command eval "$(
+    type _cargo |
+    tail -n+2 |
+    sed '/^[[:space:]]*local opt_var=opt__/i\
+                local opt__dynlint\
+                if [[ "$cmd" = dynlint ]]; then\
+                    if [[ "$prev" != --path ]]; then\
+                        if [[ "$prev" != --lib ]]; then\
+                            opt__dynlint="--all --lib --list --path"\
+                        fi\
+                        opt__dynlint="$opt__dynlint $(cargo dynlint --list --no-build --quiet | while read X Y; do echo "$X"; done)"\
+                    fi\
+                fi'
+)"

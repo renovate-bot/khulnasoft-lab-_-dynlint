@@ -1,0 +1,40 @@
+[package]
+name = "unnecessary_conversion_for_trait"
+version = "2.4.3"
+authors = ["Samuel E. Moelius III <sam@moeli.us>"]
+description = "A lint to check for unnecessary trait-behavior-preserving calls"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[example]]
+name = "general"
+path = "ui/general.rs"
+
+[[example]]
+name = "unnecessary_to_owned"
+path = "ui/unnecessary_to_owned.rs"
+
+[[example]]
+name = "vec"
+path = "ui/vec.rs"
+
+[dependencies]
+clippy_utils = { workspace = true }
+if_chain = "1.0"
+
+dynlint_internal = { path = "../../../internal", features = ["cargo"] }
+dynlint_linting = { path = "../../../utils/linting" }
+
+[dev-dependencies]
+tempfile = "3.8"
+
+dynlint_testing = { path = "../../../utils/testing" }
+
+[features]
+rlib = ["dynlint_linting/constituent"]
+
+[package.metadata.rust-analyzer]
+rustc_private = true

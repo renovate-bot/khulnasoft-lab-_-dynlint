@@ -1,0 +1,42 @@
+[package]
+name = "clippy"
+version = "2.4.3"
+authors = ["Samuel E. Moelius III <sam@moeli.us>"]
+description = "All of the Clippy lints as a Dynlint library"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+clippy_lints = { git = "https://github.com/rust-lang/rust-clippy", rev = "b105fb4c39bc1a010807a6c076193cef8d93c109" }
+clippy_utils = { git = "https://github.com/rust-lang/rust-clippy", rev = "b105fb4c39bc1a010807a6c076193cef8d93c109" }
+serde_json = "1.0"
+
+dynlint_internal = { path = "../../../internal" }
+dynlint_linting = { path = "../../../utils/linting" }
+
+[dev-dependencies]
+anyhow = "1.0"
+cargo_metadata = "0.18"
+env_logger = "0.10"
+log = "0.4"
+tempfile = "3.8"
+
+dynlint = { path = "../../../dynlint", default-features = false }
+dynlint_internal = { path = "../../../internal", features = ["git"] }
+dynlint_testing = { path = "../../../utils/testing" }
+
+[package.metadata.rust-analyzer]
+rustc_private = true
+
+[workspace]
+
+[workspace.metadata.dynlint]
+libraries = [
+    { path = "../../general" },
+    { path = "../../supplementary" },
+    { path = "../../testing/clippy" },
+    { path = "../../restriction/*" },
+]

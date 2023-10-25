@@ -1,0 +1,23 @@
+# smoelius: `dynlint_driver` and `dynlint_linting` are in their own workspaces because they require
+# specific Rust components.
+
+[workspace]
+members = [
+    "cargo-dynlint",
+    # "driver",
+    "dynlint",
+    "dynlint-link",
+    "examples",
+    "internal",
+    # "utils/linting",
+    "utils/testing",
+]
+resolver = "2"
+
+[workspace.metadata.dynlint]
+libraries = [
+    { path = "examples/general" },
+    { path = "examples/supplementary" },
+    { path = "examples/testing/clippy" },
+    { path = "examples/restriction/*" },
+]

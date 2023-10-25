@@ -1,0 +1,179 @@
+#![feature(rustc_private)]
+#![recursion_limit = "256"]
+#![warn(unused_extern_crates)]
+
+extern crate rustc_ast;
+extern crate rustc_errors;
+extern crate rustc_hir;
+extern crate rustc_middle;
+extern crate rustc_span;
+
+use clippy_utils::{
+    diagnostics::span_lint_and_sugg, is_expr_path_def_path, match_any_def_paths,
+    source::snippet_opt,
+};
+use dynlint_internal::paths;
+use if_chain::if_chain;
+use rustc_ast::LitKind;
+use rustc_errors::Applicability;
+use rustc_hir::{Expr, ExprKind};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
+use rustc_span::{sym, Span};
+
+dynlint_linting::declare_late_lint! {
+    /// ### What it does
+    /// Checks for joining of constant path components.
+    ///
+    /// ### Why is this bad?
+    /// Such paths can be constructed from string literals using `/`, since `/` works as a path
+    /// separator on both Unix and Windows (see [`std::path::Path`]).
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::path::PathBuf;
+    /// # let _ =
+    /// PathBuf::from("..").join("target")
+    /// # ;
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::path::PathBuf;
+    /// # let _ =
+    /// PathBuf::from("../target")
+    /// # ;
+    /// ```
+    ///
+    /// [`std::path::Path`]: https://doc.rust-lang.org/std/path/struct.Path.html
+    pub CONST_PATH_JOIN,
+    Warn,
+    "joining of constant path components"
+}
+
+enum TyOrPartialSpan {
+    Ty(&'static [&'static str]),
+    PartialSpan(Span),
+}
+
+impl<'tcx> LateLintPass<'tcx> for ConstPathJoin {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
+        let (components, ty_or_partial_span) = collect_components(cx, expr);
+        if components.len() < 2 {
+            return;
+        }
+        let path = components.join("/");
+        let (span, sugg) = match ty_or_partial_span {
+            TyOrPartialSpan::Ty(ty) => (expr.span, format!(r#"{}::from("{path}")"#, ty.join("::"))),
+            TyOrPartialSpan::PartialSpan(partial_span) => {
+                (partial_span, format!(r#".join("{path}")"#))
+            }
+        };
+        span_lint_and_sugg(
+            cx,
+            CONST_PATH_JOIN,
+            span,
+            "path could be constructed from a string literal",
+            "use",
+            sugg,
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
+fn collect_components(cx: &LateContext<'_>, mut expr: &Expr<'_>) -> (Vec<String>, TyOrPartialSpan) {
+    let mut components_reversed = Vec::new();
+    let mut partial_span = expr.span.with_lo(expr.span.hi());
+
+    #[allow(clippy::while_let_loop)]
+    loop {
+        if_chain! {
+            if let ExprKind::MethodCall(_, receiver, [arg], _) = expr.kind;
+            if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
+            if match_any_def_paths(
+                cx,
+                method_def_id,
+                &[&paths::CAMINO_UTF8_PATH_JOIN, &paths::PATH_JOIN],
+            )
+            .is_some();
+            if let Some(s) = is_lit_string(cx, arg);
+            then {
+                expr = receiver;
+                components_reversed.push(s);
+                partial_span = partial_span.with_lo(receiver.span.hi());
+                continue;
+            } else {
+                break;
+            }
+        }
+    }
+
+    let ty_or_partial_span = if_chain! {
+        if let ExprKind::Call(callee, [arg]) = expr.kind;
+        let ty = is_path_buf_from(cx, callee, expr);
+        if is_expr_path_def_path(cx, callee, &paths::CAMINO_UTF8_PATH_NEW)
+            || is_expr_path_def_path(cx, callee, &paths::PATH_NEW)
+            || ty.is_some();
+        if let Some(s) = is_lit_string(cx, arg);
+        then {
+            components_reversed.push(s);
+            TyOrPartialSpan::Ty(ty.unwrap_or_else(|| {
+                if is_expr_path_def_path(cx, callee, &paths::CAMINO_UTF8_PATH_NEW) {
+                    &paths::CAMINO_UTF8_PATH_BUF
+                } else {
+                    &paths::PATH_BUF
+                }
+            }))
+        } else {
+            TyOrPartialSpan::PartialSpan(partial_span)
+        }
+    };
+
+    components_reversed.reverse();
+    (components_reversed, ty_or_partial_span)
+}
+
+fn is_path_buf_from(
+    cx: &LateContext<'_>,
+    callee: &Expr<'_>,
+    expr: &Expr<'_>,
+) -> Option<&'static [&'static str]> {
+    if_chain! {
+        if let Some(callee_def_id) = cx.typeck_results().type_dependent_def_id(callee.hir_id);
+        if cx.tcx.is_diagnostic_item(sym::from_fn, callee_def_id);
+        let ty = cx.typeck_results().expr_ty(expr);
+        if let ty::Adt(adt_def, _) = ty.kind();
+        then {
+            let paths: &[&[&str]] = &[&paths::CAMINO_UTF8_PATH_BUF, &paths::PATH_BUF];
+            match_any_def_paths(
+                cx,
+                adt_def.did(),
+                &[&paths::CAMINO_UTF8_PATH_BUF, &paths::PATH_BUF],
+            )
+            .map(|i| paths[i])
+        } else {
+            None
+        }
+    }
+}
+
+fn is_lit_string(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
+    if_chain! {
+        if !expr.span.from_expansion();
+        if let ExprKind::Lit(lit) = &expr.kind;
+        if let LitKind::Str(symbol, _) = lit.node;
+        // smoelius: I don't think the next line should be necessary. But following the upgrade to
+        // nightly-2023-08-24, `expr.span.from_expansion()` above started returning false for
+        // `env!(...)`.
+        if snippet_opt(cx, expr.span) == Some(format!(r#""{}""#, symbol.as_str()));
+        then {
+            Some(symbol.to_ident_string())
+        } else {
+            None
+        }
+    }
+}
+
+#[test]
+fn ui() {
+    dynlint_testing::ui_test_example(env!("CARGO_PKG_NAME"), "ui");
+}

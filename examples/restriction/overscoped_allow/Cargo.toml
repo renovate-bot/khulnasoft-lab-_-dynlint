@@ -1,0 +1,48 @@
+[package]
+name = "overscoped_allow"
+version = "2.4.3"
+authors = ["Samuel E. Moelius III <sam@moeli.us>"]
+description = "A lint to check for `allow` attributes whose scope could be reduced"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[[example]]
+name = "ui_general"
+path = "ui_general/main.rs"
+
+[[bin]]
+name = "ui_test"
+path = "ui_test/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+clippy_utils = { git = "https://github.com/rust-lang/rust-clippy", rev = "b105fb4c39bc1a010807a6c076193cef8d93c109" }
+if_chain = "1.0"
+rustfix = "0.6"
+serde = "1.0"
+serde_json = "1.0"
+
+dynlint_internal = { path = "../../../internal" }
+dynlint_linting = { path = "../../../utils/linting" }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+tempfile = "3.8"
+
+dynlint_testing = { path = "../../../utils/testing" }
+
+[package.metadata.rust-analyzer]
+rustc_private = true
+
+[workspace]
+
+[workspace.metadata.dynlint]
+libraries = [
+    { path = "../../general" },
+    { path = "../../supplementary" },
+    { path = "../../testing/clippy" },
+    { path = "../../restriction/*" },
+]

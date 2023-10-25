@@ -1,0 +1,30 @@
+[package]
+name = "await_holding_span_guard"
+version = "2.4.3"
+authors = ["David Barsky"]
+description = "A lint to check for Span guards held while calling await inside an async function"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[example]]
+name = "ui"
+path = "ui/main.rs"
+
+[dependencies]
+clippy_utils = { workspace = true }
+
+dynlint_linting = { path = "../../../utils/linting" }
+
+[dev-dependencies]
+tracing = "0.1"
+
+dynlint_testing = { path = "../../../utils/testing" }
+
+[features]
+rlib = ["dynlint_linting/constituent"]
+
+[package.metadata.rust-analyzer]
+rustc_private = true
